@@ -1,9 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=mpi_single_node
-#SBATCH --output=/scratch/$USER/msu_slurm_test/mpi_hello_world/single_node.out
+#SBATCH --output=single_node_%A_%a.out
+#SBATCH --error=single_node_%A_%a.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --container-image=/scratch/$USER/nvcr.io+nvidia+pytorch+24.04-py3.sqsh
 
-cd /scratch/$USER/msu_slurm_test/mpi_hello_world
-srun --mpi=pmix ./hello_mpi
+srun --container-image=/scratch/$USER/nvcr.io+nvidia+pytorch+24.04-py3.sqsh \
+     --container-mounts=/scratch/$USER/msu_slurm_test/mpi_hello_world:/workdir \
+     --mpi=pmix \
+     bash -c "
+  cd /workdir
+  mpirun ./hello_world
+"
