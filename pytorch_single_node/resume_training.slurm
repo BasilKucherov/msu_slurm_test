@@ -19,7 +19,6 @@ CHECKPOINT_FILE="checkpoint_epoch_10.pt"  # выбрать чекпоинт с �
 mkdir -p ${CHECKPOINT_DIR}
 mkdir -p ${DATA_DIR}
 
-# Container-mounted paths
 CONTAINER_DATA_DIR="/workspace/datasets/mnist"
 
 srun --container-image=${ENROOT_IMAGE} \

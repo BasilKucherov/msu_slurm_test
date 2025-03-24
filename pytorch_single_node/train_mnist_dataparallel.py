@@ -83,8 +83,8 @@ def load_checkpoint(filename, model, optimizer):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training')
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example with DataParallel')
+    parser.add_argument('--batch-size', type=int, default=256, help='input batch size for training')
     parser.add_argument('--test-batch-size', type=int, default=1000, help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1.0, help='learning rate')
@@ -102,8 +102,9 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if use_cuda:
-        print(f"Using {torch.cuda.device_count()} CUDA device(s)")
-        for i in range(torch.cuda.device_count()):
+        num_gpus = torch.cuda.device_count()
+        print(f"Using {num_gpus} CUDA device(s)")
+        for i in range(num_gpus):
             print(f"CUDA Device {i}: {torch.cuda.get_device_name(i)}")
     else:
         print("Using CPU")
@@ -119,10 +120,15 @@ def main():
     train_dataset = datasets.MNIST(args.data_dir, train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(args.data_dir, train=False, transform=transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, num_workers=4)
 
     model = Net().to(device)
+
+    if use_cuda and torch.cuda.device_count() > 1:
+        print(f"Using DataParallel with {torch.cuda.device_count()} GPUs")
+        model = nn.DataParallel(model)
+
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.gamma)
 
@@ -148,7 +154,7 @@ def main():
 
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
-        print(f"Epoch {epoch+1} completed in {epoch_duration:.2f} seconds")
+        print(f"Epoch {epoch+1} completed in {epoch_duration:.2f} seconds (DataParallel)")
 
         checkpoint = {
             'epoch': epoch + 1,
@@ -168,6 +174,9 @@ def main():
     total_duration = total_end_time - total_start_time
     print(f"\nTotal training time: {total_duration:.2f} seconds")
     print(f"Average time per epoch: {total_duration / (args.epochs - start_epoch):.2f} seconds")
+
+    if torch.cuda.is_available():
+        print(f"Training completed using {torch.cuda.device_count()} GPUs with DataParallel")
 
 
 if __name__ == '__main__':
